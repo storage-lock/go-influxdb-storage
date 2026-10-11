@@ -1,18 +1,17 @@
 package influxdb_storage
 
-// InfluxDB 是时序数据库，不支持事务和唯一约束
-// 不适合用于分布式锁，仅作为实验性实现
-
 import (
 	"context"
 	"time"
 
 	go_iterator "github.com/golang-infrastructure/go-iterator"
 	"github.com/storage-lock/go-storage"
+	storage_lock "github.com/storage-lock/go-storage-lock"
 )
 
-// InfluxDBStorage InfluxDB存储实现（实验性）
-// ⚠️ InfluxDB 不支持CAS，不建议用于分布式锁
+// InfluxDBStorage InfluxDB存储实现
+// InfluxDB 是时序数据库，不支持事务和原子条件写入（CAS）
+// 因此无法安全地用于分布式锁，本实现仅作为非 CAS 存储的参考示例
 type InfluxDBStorage struct {
 }
 
@@ -29,10 +28,14 @@ func (x *InfluxDBStorage) GetName() string {
 }
 
 func (x *InfluxDBStorage) Capabilities() []storage.StorageCapability {
-	// InfluxDB 不支持CAS
 	return []storage.StorageCapability{
 		storage.CapabilityReliableTime,
+		storage.CapabilityWatch,
 	}
+}
+
+func (x *InfluxDBStorage) Watch(ctx context.Context, lockId string) (<-chan *storage.LockInformation, error) {
+	return storage.NewPollingLockWatcher(x, 500*time.Millisecond).Watch(ctx, lockId)
 }
 
 func (x *InfluxDBStorage) Init(ctx context.Context) error {
@@ -40,19 +43,19 @@ func (x *InfluxDBStorage) Init(ctx context.Context) error {
 }
 
 func (x *InfluxDBStorage) CreateWithVersion(ctx context.Context, lockId string, version storage.Version, lockInformation *storage.LockInformation) error {
-	return nil
+	return storage_lock.ErrStorageCapabilityMissing
 }
 
 func (x *InfluxDBStorage) UpdateWithVersion(ctx context.Context, lockId string, expectedVersion, newVersion storage.Version, lockInformation *storage.LockInformation) error {
-	return nil
+	return storage_lock.ErrStorageCapabilityMissing
 }
 
 func (x *InfluxDBStorage) DeleteWithVersion(ctx context.Context, lockId string, expectedVersion storage.Version, lockInformation *storage.LockInformation) error {
-	return nil
+	return storage_lock.ErrStorageCapabilityMissing
 }
 
 func (x *InfluxDBStorage) Get(ctx context.Context, lockId string) (string, error) {
-	return "", nil
+	return "", storage_lock.ErrLockNotFound
 }
 
 func (x *InfluxDBStorage) GetTime(ctx context.Context) (time.Time, error) {
@@ -64,5 +67,5 @@ func (x *InfluxDBStorage) Close(ctx context.Context) error {
 }
 
 func (x *InfluxDBStorage) List(ctx context.Context) (go_iterator.Iterator[*storage.LockInformation], error) {
-	return nil, nil
+	return go_iterator.FromSlice([]*storage.LockInformation{}), nil
 }
