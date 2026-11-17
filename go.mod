@@ -2,7 +2,7 @@ module github.com/storage-lock/go-influxdb-storage
 
 go 1.23
 
-require github.com/storage-lock/go-storage v0.0.3
+require github.com/storage-lock/go-storage v0.1.0
 
 require (
 	github.com/golang-infrastructure/go-iterator v0.0.0-20230524171120-56988a9b127c
